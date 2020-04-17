@@ -1,0 +1,207 @@
+# Logger
+This is a small job around logger, composed by two component:
+* logger class : a class that will act as an interface to the user
+* logger_policy classes : they shall all inherit from the abstract class `log_policy_interface`, and it will deal the outuput of the log
+
+**Please note that C++11 or higher compiler is required**
+
+## logger class
+### Construction
+Contructor has default values on all the args, so object could be instanciante without any arguments
+```
+logger(log_policy_interface* policy = 
+           (log_policy_interface*) new file_log_policy(),
+           const std::string& name = "logger.log",
+           const std::string& path = "./");
+```
+* `policy` : it should be a pointer to the policy class which should inherit from `log_policy_interface`
+* `name` : the logger name. It will be used to retrieve the logger from anywhere using the static method. In addition, it will be the filename in case of file logging policy.
+* `path` : path of the logging file in case of file policy, unused otherwise.
+
+### Retrieve logger
+As soon as a `logger` object is instancied, it is registred in a static map using its name as the key.
+From anywhere in your application, you can retrieve a pointer to the logger object using the static function `logger::get_logger`. For example, assuming that `your_logger_name` is the `name` in the constructor:
+```
+#include "logger.hpp"
+...
+logger* _plog = logger::get_logger("your_logger_name");
+```
+As this method is slow, it shall be implemented for example in the contructor of your class and the pointer shall be stored as a member.
+
+### Thread name
+You can log date from different thread. If you want to log each thread name with its associate message, you have to use the `set_thread_name` method, like the following example:
+```
+ _plog->set_thread_name("your_thread");
+```
+This will register the correspondance of your thread name and the thread id that call the method. Following this, each time you will send a message with this thread, it will automatically retrieve the name you affected to it, and it will log it if header has been set with that information.
+
+### Logging levels
+The class define 6 logging level:
+ * `debug` debug message
+ * `info` information (ex startup a service)
+ * `notice` Nothing serious, but notably nevertheless
+ * `warning` Nothing serious by itself but might indicate problems
+ * `error` Error condition
+ * `critical` Critical condition, should stop or abord at least a process
+
+Each message send to the logger shall have a logging level, it should be set like that :
+ ```
+ _plog->print<log_level::info>("Hello World !");
+ ```
+
+ Each logger has a mini logging level, which could be set by calling  :
+ ```
+ _plog->set_min_log_level(log_level::debug);
+ ```
+
+
+Messages sent to the logger with a inferior log level will be scrapped. By default, the log level is minimal (log_level::debug).
+
+### Print macro
+
+`logger.hpp` header file contains macro to ease your code.
+ ```
+ _plog->print<log_level::info>("Don't panic");
+ ```
+ is equivalent to:
+  ```
+ _plog->LOG_INFO("Don't panic");
+ ```
+
+Following macro are available:
+```
+#define LOG_DEBUG       print<log_level::debug>
+#define LOG_INFO        print<log_level::info>
+#define LOG_NOTICE      print<log_level::notice>
+#define LOG_WARNING     print<log_level::warning>
+#define LOG_ERROR       print<log_level::error>
+#define LOG_CRITICAL    print<log_level::critical>
+```
+### Variadic print
+`print` method has been implemented with variadic arguments. As it insert recursively the `args` in a `std::stringstream`, any type supported by the `<<`(insertion) operator could be used as type for `args` in the print method. As an example, you can write:
+```
+_plog->LOG_NOTICE("The result of ", 1, "divided by ", 2," is : ", 0.5);
+```
+### Header pattern
+Header of each log message could be parametred using the `set_pattern` method. It takes a `std::string` as argument, wich is basically composed by:
+  * **user characters** which are used as delimiter and/or decorator. It can be any char except `%` char and sometimes `&`.
+  * **predefined fields** which are informations that you wanted to be printed in each logging message. Each field is identified by only one char, preceded by the delimiter `%` (you know understand why you can't use it as a decorator). All predifined field are:
+    * `%d` : date field, see below to format it
+    * `%i` : (index) = line number. Be aware that line number is incremented even if you don't show it in your log.
+    * `%l` : log level of the message (i.e. `CRITICAL`)
+    * `%n` : logger name, set up in the constructor (useless for file logging as it is the name of the file)
+    * `%t` : time field, see below to format it
+    * `%x` : thread name, as defined by calling `set_thread_name(name)`
+    * any char out of this list will be scrapped (as well as the `%` delimiter)
+    You can add several time the same field (even if it seems to be useless).
+
+Date and time pattern have a default formatting, respectively `"%d-%m-%Y"` and `"%H:%M:%S"`. You can change this by two ways
+  * Calling the methods `set_date_format` and/or `set_time_format`. The argument of both method is a `std::string` that describe the date/time format, according to `std::put_time format` (refer to C++11 ore greater documentation). You can write a time format in the date field and vice versa. The 2 fields are made for convenience, as only one format is supported for each field (meaning that in you patter you can add as many %d %d %d %d ... as you want, the date format for each field will always be the same).
+  * You can include directly in the pattern of `set_pattern` method. To do so, immedialely after the `%d` or `%t` mark, you should put your date/time format, enclosed by `&` char.
+
+Herebelow some examples:
+```
+_plog->set_pattern("[%d&%d-%m-%y& %t&%H:%M:%S&]-{%l}+i ");
+_plog->LOG_ERROR("computer is about to blow up");
+// Output :
+[17-04-20 00:14:11]-{ERROR}+1 computer is about to blow up
+
+// Other example
+_plog->set_thread_name("marvin");
+_plog->set_min_log_level(log_level::info);
+_plog->set_pattern("#%i:[%d&%a %d-%B-%y& %t]-[%l]-[%x]:");
+_plog->LOG_INFO("Don't panic");
+// Output :
+#1:[Fri 17-April-20 22:13:45]-[INFO]-[marvin]:Don't panic
+```
+## log policy classes
+log policy are the target of the logger. They all shall inherit from `log_policy_interface` abstract class:
+```
+class log_policy_interface
+{
+public:
+    virtual ~log_policy_interface() = 0;
+    virtual void		open_out_stream(const std::string& name) = 0;
+    virtual void		close_out_stream() = 0;
+    virtual void		write(const std::string& msg) = 0;
+    
+};
+```
+The name of the members to be implemented explain by itself the purpose of the method.
+### Existing policies
+For now only two policies are implemented:
+  * `file_log_policy`, which basically log into a file
+  * `stdout_log_policy`, which send the log to stdout.
+
+some policies may be developped:
+  * ring file policy
+  * daily file policy
+  * policy distributor (send to 2 policies)
+
+## Example
+Herebelow a sample example to illustrate simple use of the logger :
+
+In main.cpp
+```
+#include "logger.hpp"
+
+int main(){
+   logger *rogue_one =new logger(new file_log_policy(), 
+                            "execution.log");
+   logger *rogue_two =new logger(new stdout_log_policy());
+
+    rogue_one->set_thread_name("computer");
+    rogue_one->set_min_log_level(log_level::info);
+    rogue_one->set_pattern("#%i:[%d&%a %d-%B-%y& %t]-[%l]-[%x]:");
+
+    rogue_one->LOG_DEBUG("I can't print this"); // will be scrapped
+    rogue_one->LOG_INFO("because min log level has been set higher"); 
+    rogue_one->LOG_NOTICE("This is due to bad coding guy"); 
+    rogue_one->LOG_WARNING("I think he is going crazy"); 
+    rogue_one->LOG_ERROR("He started to hit the computer");
+    rogue_one->LOG_CRITICAL("I'm about to explode !");
+
+    rogue_two->set_thread_name("log_two");
+    rogue_two->set_pattern("#%i:[%d&%d-%m-%y& %t]-[%l]-[%x]:");
+    
+    rogue_two->LOG_DEBUG("This is the ", 1, "st test");
+    rogue_two->LOG_INFO("On this computer");
+    rogue_two->LOG_ERROR("Don't panic");
+    rogue_two->LOG_CRITICAL("I will fix it...");
+
+    delete rogue_one;
+    delete rogue_two;
+    std::cout << "That's all folks" << std::endl;
+
+}
+```
+To illustrate how to retrieve a pointer in another class : in far_away.h
+```
+#include "logger.hpp"
+
+class far_away {
+public:
+    far_away();
+private:
+    logger* _p_one;
+}
+
+// Implementation of the contructor
+far_away::far_away() {
+  _p_one = logger::get_logger("execution.log");
+
+  _p_one->LOG_INFO("I have got a pointer to the rogue_one logger !);
+}
+```
+
+
+## License
+Copyright (c) 2020 Akira Shimahara <akira215corp@gmail.com>
+
+This program is free software; you can redistribute it and/or modify it under the therms of the GNU General Public License as published by the Free Software Foundation; either version 2 of the License, or (at your option) any later version.
+ 
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along with this program; if not, write to the Free Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307 USA.
+
+

@@ -1,0 +1,7 @@
+# Ignore directories
+bin/
+docs/
+.vscode/
+# Ignore Makefile (cross compil)
+Makefile
+
