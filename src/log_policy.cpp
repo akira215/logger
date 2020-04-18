@@ -166,3 +166,38 @@ void ringfile_log_policy::write(const std::string& msg) {
 void stdout_log_policy::write(const std::string& msg) {
     std::cout<<msg<<std::endl<<std::flush;
 }
+
+/**
+* -----------------Implementation for spread_log_policy-------------------------
+*/
+
+spread_log_policy::~spread_log_policy() {
+    //delete the log_policy_interface objects
+    for(auto it=_policy_list.begin(); it!=_policy_list.end(); ++it) {
+	    delete *it;
+        *it = nullptr;
+    }
+    _policy_list.clear();
+}
+
+void spread_log_policy::open_out_stream(const std::string& name) {
+    for(auto it=_policy_list.begin(); it!=_policy_list.end(); ++it) {
+	    (*it)->open_out_stream(name);
+    }
+}
+
+void spread_log_policy::close_out_stream() {
+    for(auto it=_policy_list.begin(); it!=_policy_list.end(); ++it) {
+	    (*it)->close_out_stream();
+    }
+}
+
+void spread_log_policy::write(const std::string& msg) {
+    for(auto it=_policy_list.begin(); it!=_policy_list.end(); ++it) {
+	    (*it)->write(msg);
+    }
+}
+
+
+
+

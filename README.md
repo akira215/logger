@@ -171,6 +171,7 @@ For now only two policies are implemented:
     *  `max_file_count` is the max number of rotating file, default value is 2. Note that a number will be appened to the filename, starting by `0` and up to `max_file_count` - 1, so you will have for example `execution.log.0`, `execution.log.1`, ...
     * Please note that with 2 files, in the worst case, you will have `max_size` data logged, with 3 files worst case is 2*`max_size`, ...
   * `stdout_log_policy`, which send the log to stdout.
+  * `spread_log_policy`, which spread log message to several log policy (which obviously all inherit from `log_policy_interface`). `spread_log_policy` has a variadic constructor, you should add as many as logging polcies as you want, just take care of the performance. Another caveat when using `spread_log_policy` is that all policies will have the same name, so the same filename. It is not a problem if one policy is only one policy is a `file_log_policy`. `stdout_log_policy` has no filename and `ringfile_log_policy` will append a number after the logger filename. Also keep in mind that you will have to set up the base policies before calling the `spread_log_policy` contructor (max file size, ...)
 
 some policies may be developped:
   * daily file policy
@@ -183,7 +184,7 @@ In main.cpp
 ```
 #include "logger.hpp"
 
-iint main(){
+int main(){
     logger *rogue_one =new logger(new file_log_policy(), 
                             "rpi-dev/execution.log");
     logger *rogue_two =new logger(new stdout_log_policy(),
@@ -192,6 +193,11 @@ iint main(){
     /* Rotatinq on 3 files rogue_three.log.0,1 and 3, max size is 2048 byte */ 
     logger *rogue_three =new logger(new ringfile_log_policy(2048, 3),
                             "rpi-dev/rogue_three.log");
+
+    /* spread on one file and stdout output */ 
+    logger *alpha_one =new logger(new spread_log_policy(new file_log_policy(),
+                             new stdout_log_policy()),
+                            "rpi-dev/alpha_one.log");
 
     rogue_one->set_thread_name("computer");
     rogue_one->set_min_log_level(log_level::info);
@@ -214,6 +220,12 @@ iint main(){
 
     for(int i=0 ; i<10000; i++)
         rogue_three->LOG_DEBUG("This is the #", i, " record");
+
+    alpha_one->LOG_DEBUG("Spreading log on ", 2, " outputs");
+    alpha_one->LOG_INFO(1, "st one is a file log");
+    alpha_one->LOG_INFO(2, "nd one is a stdout log");
+    alpha_one->LOG_NOTICE("you can add as many output as you want");
+    alpha_one->LOG_WARNING("But take care of the performance");
 
     delete rogue_one;
     delete rogue_two;

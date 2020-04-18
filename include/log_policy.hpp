@@ -18,6 +18,7 @@
 #include <iostream>
 #include <sstream>
 #include <fstream>
+#include <vector>
 
 #define FLOAT_PRECISION 10
 
@@ -116,9 +117,8 @@ private:
 
 };
 
-
 /**
- * @brief Implementation which allow to write to stdout
+ * @brief Implementation log to stdout
  */
 class stdout_log_policy : public log_policy_interface
 {
@@ -129,3 +129,50 @@ public:
     void close_out_stream() {  }
     void write(const std::string& msg);
 };
+
+/** 
+ * @brief spread_log_policy 
+ * @brief just spread messages to other loggers registred during construction
+ * @brief take care as the name is the same for all policies, filename
+ * @brief will be the same if nothing is done (ringfile <> file <> stdout)
+ */
+class spread_log_policy : public log_policy_interface
+{
+public:
+    template<typename... Args>
+    spread_log_policy(Args... args);
+    
+    ~spread_log_policy();
+    void open_out_stream(const std::string& name);
+    void close_out_stream();
+    void write(const std::string& msg);
+private:
+    /** @brief initailize() is
+     *  @brief the recursive variadic method
+     *  @brief it fill the vector with the required policies
+     */
+    void initialize() { }
+
+    template<typename... Args>
+    void initialize(log_policy_interface* policy, Args... args);
+
+    /** @brief _policy_list
+     *  @brief is the vector storing pointers of all the 
+     *  @brief policies we want to spread on
+     */
+    std::vector<log_policy_interface*> _policy_list;
+};
+
+template<typename... Args>
+spread_log_policy::spread_log_policy(Args... args) {
+    /* Don't call recursive contructor, it will create
+     * several object....
+     */
+    initialize(args...);
+}
+
+template<typename... Args>
+void spread_log_policy::initialize(log_policy_interface* policy, Args... args) {
+    _policy_list.push_back(policy);
+    initialize(args...);
+}
