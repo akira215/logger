@@ -94,13 +94,12 @@ public:
     /** @brief logger constructor
      *  @brief each param has default value 
      *  @param policy log policy i.e.  where the log will be sent
-     *  @param name of the logger. Wil be used for the file name
-     *  @param path path of file, if no file in policy, unused
+     *  @param name of the logger. Will be used for the file name
+     *  by removing the path
      */ 
     logger(log_policy_interface* policy = 
             (log_policy_interface*) new file_log_policy(),
-            const std::string& name = "logger.log",
-            const std::string& path = "./");
+            const std::string& name = "./logger.log");
 
     /** @brief logger destructor
      *  @brief kill the daemon associated to the instance
@@ -263,10 +262,10 @@ private:
      */
     unsigned int _log_line_number;
 
-    /** @brief path of the log file
-     *  @brief unused in case of non file logger
+    /** @brief filename of log file
+     *  @brief i.e. path + file
      */ 
-    std::string _path;
+    std::string _filename;
 
     /** @brief _name of the logger
      *  @brief will be used as filename for file logger

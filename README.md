@@ -3,7 +3,42 @@ This is a small job around logger, composed by two component:
 * logger class : a class that will act as an interface to the user
 * logger_policy classes : they shall all inherit from the abstract class `log_policy_interface`, and it will deal the outuput of the log
 
-**Please note that C++11 or higher compiler is required**
+## Building
+**Please note that C++11 or higher compiler is required for the logger**
+**C++17 or higher compiler is required for the `ringfile_log_policy`**
+To build this logger :
+  * add `-std=c++17` directive to the compiler (or`-std=c++11`) if `ringfile_log_policy`
+  * add `-pthread` library to the compiler that will give to the linker
+  * add `-lstdc++fs` library if `ringfile_log_policy` is required
+
+Example of Makefile
+```
+CXX		  := /usr/bin/
+CXX_FLAGS := -Wall -Wextra -std=c++17 -ggdb
+
+BIN		:= bin
+SRC		:= src
+INCLUDE	:= include
+LIB		:= lib
+
+LIBRARIES	:= -pthread -lstdc++fs
+
+EXECUTABLE	:= MyLogger
+
+
+all: $(BIN)/$(EXECUTABLE)
+
+run: clean all
+	clear
+	./$(BIN)/$(EXECUTABLE)
+
+$(BIN)/$(EXECUTABLE): $(SRC)/*.cpp
+	$(CXX) $(CXX_FLAGS) -I$(INCLUDE) -L$(LIB) $^ -o $@ $(LIBRARIES)
+
+clean:
+	-rm $(BIN)/*
+
+```
 
 ## logger class
 ### Construction
@@ -131,10 +166,13 @@ The name of the members to be implemented explain by itself the purpose of the m
 ### Existing policies
 For now only two policies are implemented:
   * `file_log_policy`, which basically log into a file
+  * `ringfile_log_policy`, which log on `n` rolling files, with a max size per file. At startup, the last modified file is selected. If there is enough space to logg data in this file, data, will be appened, if note, rotating process occured. 2 args in the constructor :
+    * `max_size` max size of one file in bytes, default value is 1MB. Note that 1KB = 1 024 bytes (and 1MB = 1 024KB and so on), and that the policy don't break log messages, and always keep file size less than `max_size`. File will be rotate if the incoming message is too big regarding the actual file size.
+    *  `max_file_count` is the max number of rotating file, default value is 2. Note that a number will be appened to the filename, starting by `0` and up to `max_file_count` - 1, so you will have for example `execution.log.0`, `execution.log.1`, ...
+    * Please note that with 2 files, in the worst case, you will have `max_size` data logged, with 3 files worst case is 2*`max_size`, ...
   * `stdout_log_policy`, which send the log to stdout.
 
 some policies may be developped:
-  * ring file policy
   * daily file policy
   * policy distributor (send to 2 policies)
 
@@ -145,10 +183,15 @@ In main.cpp
 ```
 #include "logger.hpp"
 
-int main(){
-   logger *rogue_one =new logger(new file_log_policy(), 
-                            "execution.log");
-   logger *rogue_two =new logger(new stdout_log_policy());
+iint main(){
+    logger *rogue_one =new logger(new file_log_policy(), 
+                            "rpi-dev/execution.log");
+    logger *rogue_two =new logger(new stdout_log_policy(),
+                            "rpi-dev/rogue_two.log");
+
+    /* Rotatinq on 3 files rogue_three.log.0,1 and 3, max size is 2048 byte */ 
+    logger *rogue_three =new logger(new ringfile_log_policy(2048, 3),
+                            "rpi-dev/rogue_three.log");
 
     rogue_one->set_thread_name("computer");
     rogue_one->set_min_log_level(log_level::info);
@@ -162,17 +205,20 @@ int main(){
     rogue_one->LOG_CRITICAL("I'm about to explode !");
 
     rogue_two->set_thread_name("log_two");
-    rogue_two->set_pattern("#%i:[%d&%d-%m-%y& %t]-[%l]-[%x]:");
+    rogue_two->set_pattern("#%i:[%d&%d-%m-%y& %t]-[%l]-[%n]:");
     
     rogue_two->LOG_DEBUG("This is the ", 1, "st test");
     rogue_two->LOG_INFO("On this computer");
     rogue_two->LOG_ERROR("Don't panic");
-    rogue_two->LOG_CRITICAL("I will fix it...");
+    rogue_two->LOG_CRITICAL("But ", 0.5, " cast");
+
+    for(int i=0 ; i<10000; i++)
+        rogue_three->LOG_DEBUG("This is the #", i, " record");
 
     delete rogue_one;
     delete rogue_two;
+    delete rogue_three;
     std::cout << "That's all folks" << std::endl;
-
 }
 ```
 To illustrate how to retrieve a pointer in another class : in far_away.h

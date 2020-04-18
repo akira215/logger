@@ -19,6 +19,8 @@
 #include <sstream>
 #include <fstream>
 
+#define FLOAT_PRECISION 10
+
 /** 
  * @brief log_policy for the logger
  * @brief log_policy for the logger
@@ -47,8 +49,73 @@ public:
     void close_out_stream();
     void write(const std::string& msg);
 private:
-    std::ofstream out_stream;
+    std::ofstream _out_stream;
 };
+
+/**
+ * @brief Implementation to write to a file, limited by size
+ */
+class ringfile_log_policy : public log_policy_interface
+{
+public:
+    /** @param max_size max size of the file in byte
+     *  @param defaut value is 1MB
+    */
+    ringfile_log_policy(uintmax_t max_size = 1048576, 
+                        uint16_t max_file_count = 2);
+    ~ringfile_log_policy(){}
+    void open_out_stream(const std::string& name);
+    void close_out_stream();
+    void write(const std::string& msg);
+private:
+
+    /** @brief get_next_filename
+     *  @return the filename (without base path)
+     */
+    std::string get_next_filename();
+
+    /** @brief rotate_file
+     *  @brief rotate the current file and reset the size
+     *  counter. Files are always smaller than _max_size
+     *  we don't cut messages.
+     */
+    void rotate_file();
+
+    /** @brief _out_stream :
+     *  @brief the ofstream object
+     */
+    std::ofstream _out_stream;
+
+    /** @brief _current_size :
+     *  @brief current size of the log file
+     */
+    uintmax_t _current_size;
+    
+    /** @brief _max_size :
+     *  @brief fmax file size in byte
+     */
+    uintmax_t _max_size;
+
+    /** @brief _current_file_index :
+     *  @brief file index we are writing int
+     */
+    uint16_t _current_file_index;
+
+    /** @brief _max_index :
+     *  @brief max file file count -1
+     */
+    uint16_t _max_index;
+
+    /** @brief _name : name without numeric extension
+     */
+    std::string _name;
+
+    /** @brief _path : path of the file
+     */
+    std::string _path;
+
+};
+
 
 /**
  * @brief Implementation which allow to write to stdout

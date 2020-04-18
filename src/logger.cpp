@@ -41,7 +41,7 @@ void logging_daemon( logger* logger )
             writing_lock.unlock();
         }
     }while( logger->_is_still_running.test_and_set() || logger->_log_buffer.size() );
-    logger->_policy->write( "-Terminating the logger daemon!-" );
+    logger->LOG_INFO( "-Terminating logger daemon-" );
 }
 
 
@@ -66,18 +66,21 @@ logger* logger::get_logger(const std::string& name) {
 // constructor
 
 logger::logger(log_policy_interface* policy,
-                const std::string& name,
-                const std::string& path):
-    _policy(policy), _log_line_number(0), _path(path), _name(name)
-   
+                const std::string& name):
+    _policy(policy), _log_line_number(0), _filename(name)
 {
+    //remove the path for the logger name
+    _name = _filename.substr(_filename.find_last_of("/\\") + 1);
+    
     _min_log_level = log_level::debug;
     _logger_list.insert(std::pair<std::string, logger*>(name, this));
     set_pattern(DEFAULT_PATTERN);
     _date_format = "%d-%m-%Y";
     _time_format = "%H:%M:%S";
 
-    _policy->open_out_stream( _path + _name );
+    _policy->open_out_stream(_filename);
+    // avoid logging because pattern is not set
+    // LOG_INFO( "-Logger activity started-" ); 
 
     //Set the running flag and spawn the daemon
     _is_still_running.test_and_set();
@@ -90,14 +93,16 @@ logger::~logger()
 {
     std::map<std::string, logger*>::iterator it;
 
+    LOG_INFO( "-Terminating logger activity...-" );
     terminate_logger();
       
     it = _logger_list.find(_name);
     if (it != _logger_list.end())
          _logger_list.erase (it);
 
-    _policy->write( "-Logger activity terminated-" );
+    
     _policy->close_out_stream();
+    delete _policy;
 }
 
 void logger::terminate_logger()
