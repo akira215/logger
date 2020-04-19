@@ -5,9 +5,11 @@ This is a small job around logger, composed by two component:
 
 ## Building
 **Please note that C++11 or higher compiler is required for the logger**
+
 **C++17 or higher compiler is required for the `ringfile_log_policy`**
+
 To build this logger :
-  * add `-std=c++17` directive to the compiler (or`-std=c++11`) if `ringfile_log_policy`
+  * add `-std=c++17` directive to the compiler (or`-std=c++11`) if `ringfile_log_policy` is not required
   * add `-pthread` library to the compiler that will give to the linker
   * add `-lstdc++fs` library if `ringfile_log_policy` is required
 
@@ -166,10 +168,14 @@ The name of the members to be implemented explain by itself the purpose of the m
 ### Existing policies
 For now only two policies are implemented:
   * `file_log_policy`, which basically log into a file
-  * `ringfile_log_policy`, which log on `n` rolling files, with a max size per file. At startup, the last modified file is selected. If there is enough space to logg data in this file, data, will be appened, if note, rotating process occured. 2 args in the constructor :
+  * `ringfile_log_policy`, which log on `n` rolling files, with a max size per file. At startup, the last modified file is selected. If there is enough space to logg data in this file, data, will be appened, if not, rotating process occured. 2 args in the constructor :
     * `max_size` max size of one file in bytes, default value is 1MB. Note that 1KB = 1 024 bytes (and 1MB = 1 024KB and so on), and that the policy don't break log messages, and always keep file size less than `max_size`. File will be rotate if the incoming message is too big regarding the actual file size.
     *  `max_file_count` is the max number of rotating file, default value is 2. Note that a number will be appened to the filename, starting by `0` and up to `max_file_count` - 1, so you will have for example `execution.log.0`, `execution.log.1`, ...
     * Please note that with 2 files, in the worst case, you will have `max_size` data logged, with 3 files worst case is 2*`max_size`, ...
+  * `dailyfile_log_policy`, which log on a file that change everyday. At startup, the file of the day is selected and log data appened. 3 args in the constructor :
+    * `decimal_rotate_hour` the hour when the file rotation shall occured, in decimal (i.e. 12.25 represent 12h15', you can get the conversion from hour to decimal by dividing minutes per 60). Default value is 0.0. Note that a convention is that the day x start the latter at 12:00 and finish at 12:00 day x+1. If your rotate point is 5:00, the file will have the name of the day x from day x 5:00 to day x+1 5:00. But if rotate point is 17:00, the file will have the name of day x-1 from day x-1 17:00 to day x 17:00.
+    *  `max_file_count` is the max number of rotating file, default value is 30. It will be interpreted as a number of day from today. Files with the correct name will be scanned, and the date will be determined by the extension (note exploiting the file system date), using the `fmt` format. All file older than `max_file_count` days will be deleted. Files that doesn't match the pattern are ignored. The check operation is done each time a new file is created. 
+    *  `fmt` is the date format that will be used as an extension to the log filename. For example, the default format will generate `execution.log.2020-04-17`, `execution.log.2020-04-18`, ... You can tweak the format checking `std::put_time` from `<iomanip>` documentation.
   * `stdout_log_policy`, which send the log to stdout.
   * `spread_log_policy`, which spread log message to several log policy (which obviously all inherit from `log_policy_interface`). `spread_log_policy` has a variadic constructor, you should add as many as logging polcies as you want, just take care of the performance. Another caveat when using `spread_log_policy` is that all policies will have the same name, so the same filename. It is not a problem if one policy is only one policy is a `file_log_policy`. `stdout_log_policy` has no filename and `ringfile_log_policy` will append a number after the logger filename. Also keep in mind that you will have to set up the base policies before calling the `spread_log_policy` contructor (max file size, ...)
 
@@ -180,24 +186,34 @@ some policies may be developped:
 ## Example
 Herebelow a sample example to illustrate simple use of the logger :
 
+**Be aware that the last for loop will take 5 minutes to run (300 iterations @ 1s)**
+
 In main.cpp
 ```
 #include "logger.hpp"
 
+#include <thread>
+#include <chrono>
+
+
 int main(){
-    logger *rogue_one =new logger(new file_log_policy(), 
+    logger *rogue_one = new logger(new file_log_policy(), 
                             "rpi-dev/execution.log");
-    logger *rogue_two =new logger(new stdout_log_policy(),
+    logger *rogue_two = new logger(new stdout_log_policy(),
                             "rpi-dev/rogue_two.log");
 
     /* Rotatinq on 3 files rogue_three.log.0,1 and 3, max size is 2048 byte */ 
-    logger *rogue_three =new logger(new ringfile_log_policy(2048, 3),
+    logger *rogue_three = new logger(new ringfile_log_policy(2048, 3),
                             "rpi-dev/rogue_three.log");
 
-    /* spread on one file and stdout output */ 
-    logger *alpha_one =new logger(new spread_log_policy(new file_log_policy(),
+    /* Spread on one file and stdout output */ 
+    logger *alpha_one = new logger(new spread_log_policy(new file_log_policy(),
                              new stdout_log_policy()),
                             "rpi-dev/alpha_one.log");
+    
+    /* A daily log file will be created each day at 17h15' */ 
+    logger *alpha_bravo = new logger(new dailyfile_log_policy(17.25),
+                            "rpi-dev/alpha_bravo.log");
 
     rogue_one->set_thread_name("computer");
     rogue_one->set_min_log_level(log_level::info);
@@ -227,28 +243,16 @@ int main(){
     alpha_one->LOG_NOTICE("you can add as many output as you want");
     alpha_one->LOG_WARNING("But take care of the performance");
 
+    for(int i=0 ; i<300; i++) {
+        alpha_bravo->LOG_DEBUG("This is the #", i, " record");
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    }
+    
+
     delete rogue_one;
     delete rogue_two;
     delete rogue_three;
     std::cout << "That's all folks" << std::endl;
-}
-```
-To illustrate how to retrieve a pointer in another class : in far_away.h
-```
-#include "logger.hpp"
-
-class far_away {
-public:
-    far_away();
-private:
-    logger* _p_one;
-}
-
-// Implementation of the contructor
-far_away::far_away() {
-  _p_one = logger::get_logger("execution.log");
-
-  _p_one->LOG_INFO("I have got a pointer to the rogue_one logger !);
 }
 ```
 
