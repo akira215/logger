@@ -179,9 +179,10 @@ For now only two policies are implemented:
   * `stdout_log_policy`, which send the log to stdout.
   * `spread_log_policy`, which spread log message to several log policy (which obviously all inherit from `log_policy_interface`). `spread_log_policy` has a variadic constructor, you should add as many as logging polcies as you want, just take care of the performance. Another caveat when using `spread_log_policy` is that all policies will have the same name, so the same filename. It is not a problem if one policy is only one policy is a `file_log_policy`. `stdout_log_policy` has no filename and `ringfile_log_policy` will append a number after the logger filename. Also keep in mind that you will have to set up the base policies before calling the `spread_log_policy` contructor (max file size, ...)
 
-some policies may be developped:
-  * daily file policy
-  * policy distributor (send to 2 policies)
+You can easily developp new policies, by inheriting from the abstract class `log_policy_interface`. You basically only have to implement 3 methods:
+  * `void open_out_stream(const std::string& name)`
+  * `void close_out_stream()`
+  * `void write(const std::string& msg)`
 
 ## Example
 Herebelow a sample example to illustrate simple use of the logger :
