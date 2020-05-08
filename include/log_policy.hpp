@@ -32,10 +32,9 @@ class log_policy_interface
 {
 public:
     virtual ~log_policy_interface() = 0;
-    virtual void		open_out_stream(const std::string& name) = 0;
-    virtual void		close_out_stream() = 0;
-    virtual void		write(const std::string& msg) = 0;
-    
+    virtual void open_out_stream(const std::string& name) = 0;
+    virtual void close_out_stream() = 0;
+    virtual void write(const std::string& msg) = 0;
 };
 
 inline log_policy_interface::~log_policy_interface(){}
@@ -210,8 +209,8 @@ private:
 class stdout_log_policy : public log_policy_interface
 {
 public:
-    stdout_log_policy(){   }
-    ~stdout_log_policy(){  }
+    stdout_log_policy() {  }
+    ~stdout_log_policy() {  }
     void open_out_stream(const std::string& name){(void) name;}
     void close_out_stream() {  }
     void write(const std::string& msg);

@@ -15,22 +15,27 @@
  * GNU General Public License for more details.
  */
 
-#include <memory>
+//#include <memory>
 #include <string>
-#include <iostream>
+//#include <iostream>
 #include <sstream>
-#include <fstream>
-#include <stdexcept>
-#include <ctime>
+//#include <fstream>
+//#include <stdexcept>
+//#include <ctime>
 
 #include <mutex>
 #include <chrono>
-#include <cstring>
 #include <thread>
 #include <map>
 #include <queue>
 #include <atomic>
-#include <cassert>
+//#include <cassert>
+#include <vector>
+#include <queue>
+#include <string>
+#include <utility>
+#include <condition_variable>
+
 #include "log_policy.hpp"
 
 
@@ -80,6 +85,17 @@ enum class log_level
 #define FORMAT_DELIMITER '&'
 
 /**
+ * @brief LOGGER_DELAY is the sleep time in ms for the logger thead
+ */
+#define LOGGER_DELAY 10
+
+/**
+ * @brief DEFAULT_LOGGER_NAME is the default name is arg is
+ * not specified in the constructor
+ */
+#define DEFAULT_LOGGER_NAME "./logger.log"
+
+/**
  * @brief logger shall be instantiated with a specific log_policy
  * @brief by default a standard file log policy is set in the
  * @brief current directory. A static function
@@ -98,8 +114,8 @@ public:
      *  by removing the path
      */ 
     logger(log_policy_interface* policy = 
-            (log_policy_interface*) new file_log_policy(),
-            const std::string& name = "./logger.log");
+            (log_policy_interface*) new stdout_log_policy(),
+            const std::string& name = DEFAULT_LOGGER_NAME);
 
     /** @brief logger destructor
      *  @brief kill the daemon associated to the instance
@@ -108,12 +124,17 @@ public:
      */ 
     ~logger();
 
-
     /** @brief print the function to be called to log data.
-     *  @brief Ex. logger->print<log_level::debug>(...)
      *  @brief variadics args combine all supported
      *  @brief std::stringstream << operator support
      *  @brief header with user pattern is prepared here
+     */ 
+    template< typename...Args >
+    void print(log_level severity, Args&&...args);
+
+    /** @brief print the function to be called to log data.
+     *  @brief Ex. logger->print<log_level::debug>(...)
+     *  @brief just here to have the macro LOG_INFO, ...
      */ 
     template< log_level severity , typename...Args >
     void print(Args&&...args);
@@ -131,17 +152,38 @@ public:
      */ 
     void set_min_log_level(log_level new_level);
 
-    /** @brief terminate_logger()
-     *  @brief kill the thread
+    /** @brief set_default_logger()
+     *  @brief set the current logger
+     *  as the default logger, which will be
+     *  used by lout and lerr macros
      */ 
-    void terminate_logger();
+    void set_default_logger();
+
+   /** @brief get_default_logger()
+     * @return return a pointer to 
+     * the default logger.
+     */ 
+    static logger* get_default_logger();
 
    /** @brief get_logger static()
-     *  @param name "name" of the logger
+     *  @param name "filename" of the logger
      *  @return logger* pointer to the logger
      *  @return nullptr if not found
      */ 
     static logger* get_logger(const std::string& name);
+
+    /** @brief loggername_exist()
+     *  @param name "name" to be tested
+     *  @return true if a logger with the same name exist
+     *  @return false otherwise
+     */ 
+    static bool loggername_exist(const std::string& name);
+
+    /** @brief logger_killall()
+     *  @brief destroy all the logger created and still
+     *  @brief alive.
+     */ 
+    static void logger_killall();
 
     /** @brief set_pattern()
      *  @brief Set the header pattern to be logged
@@ -175,12 +217,6 @@ public:
      */ 
     void set_time_format(const std::string &fmt);
 
-    /** @brief logging_daemon()
-     *  @brief the dameon func that will be called by the
-     *  thread
-     */ 
-    friend void logging_daemon( logger* logger );
-
     /** @brief Formatting functions
      *  @brief public as they may be interesting for others
      */
@@ -193,6 +229,18 @@ public:
     std::string get_empty_string();
 
 private:
+    /** @brief terminate_logger()
+     *  @brief kill the thread
+     * it is called by the class destructor
+     */ 
+    void terminate_logger();
+
+    /** @brief logging_thread()
+     *  @brief this thread push the logging queue
+     *  to the write policy (ies)
+     */ 
+    void logging_thread();
+
     /** @brief print_impl core printing method
      *  @brief will be called once the overloaded recursive
      *  @brief will reach the end. It push the stream to the 
@@ -206,6 +254,19 @@ private:
     template<typename First, typename...Rest>
     void print_impl(std::stringstream&&,First&& parm1,Rest&&...parm);
 
+    /** @brief _print_mutex to protect print access
+     * if multi threaded app call the logger.
+     */
+    std::mutex _print_mutex;
+
+    /** @brief The first logger to be registred or
+     * the one set by set_default_logger();
+     * default_logger will be used when calling
+     * lcout, lcerr and lclog macros
+     */
+    static logger* _default_logger;
+
+    typedef std::pair<std::string, std::string (logger::*)()> headerElement;
     /** @brief _header_pattern store the user pattern
      *  @brief it is a vector of pair 
      *  @brief pair first are user char (separator, decorator,...)
@@ -213,7 +274,7 @@ private:
      *  @brief first could be empty string and second could be a function
      *  @brief that will return empty string (logger::get_empty_string)
      */
-    std::vector<std::pair<std::string, std::string (logger::*)()>> _header_pattern;
+    std::vector<headerElement> _header_pattern;
 
     /* min log level, message with a inferior level will not be printed */
     log_level _min_log_level;
@@ -239,22 +300,27 @@ private:
 
     /** @brief _the write mutex of the logger
      */
-    std::timed_mutex _write_mutex;
+    std::mutex _write_mutex;
+
+    /** @brief _data_available is notify by the print method of this class
+     * it will wake up the logging thread that will process log datas.
+     */
+    std::condition_variable _data_available;
 
     /** @brief _log_buffer is the media between the current user 
      *  @brief input operations and the daemon thread that perform
      *  @brief output operations
      */
-    std::vector< std::string > _log_buffer;
+    std::queue< std::string > _log_buffer;
 
     /** @brief _policy pointer to the policy class which shall
      *  @brief inherit from log_policy_interface
      */
     log_policy_interface* _policy;
 
-    /** @brief _is_still_running flag for the running daemon
+    /** @brief _is_running flag for the running daemon
      */
-    std::atomic_flag _is_still_running = ATOMIC_FLAG_INIT;
+    std::atomic<bool> _is_running;
 
     /** @brief _log_line_number is incremented each time
      *  @brief logger::print method is called, even if it is
@@ -278,18 +344,26 @@ private:
      *  @param T logger* pointer to the logger
      */ 
     static std::map<std::string, logger*> _logger_list;
-
 };
 
 template< log_level severity ,typename...Args >
 void logger::print(Args&&...args)
+{
+    print(severity, std::move(args)...);
+}
+
+template< typename...Args >
+void logger::print(log_level severity, Args&&...args)
 {
     if(severity < _min_log_level){
         return;//Level too low
     }
     std::stringstream log_stream;
 
-    _current_level = severity; // Pass arg to the funct called latter
+    // Acquire the mutex to protect header mixing in case of multithreaded app
+    std::scoped_lock<std::mutex> guard(_print_mutex);
+
+    _current_level = severity; // Pass arg to the header built funct
     _log_line_number++; // Even if no output, increment line number
 
     /* Build the header by pushing user char 
@@ -312,3 +386,61 @@ void logger::print_impl(std::stringstream&& log_stream,
                std::move(parm)...);
 }
 
+
+/** @brief Macro to log data direclty to 
+ * _default_logger. Include this header and
+ * just call lcout << "something to log" << std:endl
+ */
+#define lclog log_stream(log_level::debug)
+#define lcout log_stream(log_level::info)
+#define lcerr log_stream(log_level::error)
+
+/** @brief Class log_stream is a logging stream that send
+ * the stream to logger each time std::endl is pushed
+ * to this stream, and when it is destructed. If std::endl
+ * is not present at the end of the stream <<operator, object
+ * is destroy and the logOutput is called, so that a line is
+ * displayed in the the logs.
+ * To be used with dedicated macros lclog, lcout an lcerr
+ */
+class log_stream: public std::ostream
+{
+    // Stream buffer that send data to logger class each time std::endl
+    // is triggered
+    class logStreamBuf: public std::stringbuf
+    {
+        public:
+            logStreamBuf(log_level loglevel)
+                :_loglevel(loglevel)
+            { }
+            ~logStreamBuf() {
+                if (pbase() != pptr()) {
+                    logOutput();
+                }
+            }
+
+            // When we sync the stream with the output. 
+            // 1) print on the logger (thread safe)
+            // 2) Reset the buffer
+            virtual int sync() {
+                logOutput();
+                return 0;
+            }
+            void logOutput() {
+                // Called by destructor.
+                // destructor can not call virtual methods.
+                logger::get_default_logger()->print(_loglevel,str());
+                str("");
+            }
+        private:
+            log_level _loglevel;
+    };
+
+    // log_stream just uses the logStreamBuf
+    logStreamBuf buffer;
+    public:
+        log_stream(log_level loglevel)
+            :std::ostream(&buffer), buffer(loglevel)
+        {
+        }
+};

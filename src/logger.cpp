@@ -14,44 +14,67 @@
  * GNU General Public License for more details.
  */
 
-#include "logger.hpp"
-#include <cassert>
-#include <thread>
-#include <iomanip>
-#include <ctime>
-#include <sstream>
 
-/*
-* Thread function
-*/
-void logging_daemon( logger* logger )
-{
-    //Dump the log data if any
-    std::unique_lock< std::timed_mutex > writing_lock{logger->_write_mutex,std::defer_lock};
-    do{
-        std::this_thread::sleep_for(std::chrono::milliseconds{10});
-        if( logger->_log_buffer.size() )
-        {
-            writing_lock.lock();
-            for( auto& elem : logger->_log_buffer )
-            {
-                logger->_policy->write( elem );
-            }
-            logger->_log_buffer.clear();
-            writing_lock.unlock();
-        }
-    }while( logger->_is_still_running.test_and_set() || logger->_log_buffer.size() );
-    logger->LOG_INFO( "-Terminating logger daemon-" );
+
+extern "C" {
+#include <unistd.h>
+#include <fcntl.h>
+#include <pthread.h>
+#include <poll.h>
 }
 
+#include "logger.hpp"
+#include <iomanip>
+#include <ctime>
 
+/*
+* Thread functions
+*/
+void logger::logging_thread()
+{
+    std::unique_lock< std::mutex > writing_lock(_write_mutex ,std::defer_lock );
+    std::string log_line;
+    do{
+        writing_lock.lock();  // shall be locked before wait call
+        _data_available.wait_for(writing_lock,
+                std::chrono::milliseconds(LOGGER_DELAY),
+               [this]{ return (!_log_buffer.empty() || !_is_running.load()); });
+
+        if( !_log_buffer.empty() ) {
+            
+            log_line = std::move(_log_buffer.front());
+            _log_buffer.pop();
+            writing_lock.unlock();
+
+            _policy->write( log_line );
+            log_line.clear();
+        } else
+            writing_lock.unlock();
+
+    }while( _is_running.load() || !_log_buffer.empty());
+    //Dump the log data if any before shutting down
+}
 
 /**
 * Implementation for logger
 */
 
 // static func
+logger* logger::_default_logger = nullptr;
 std::map<std::string, logger*> logger::_logger_list;
+
+logger* logger::get_default_logger()
+{
+    if (_default_logger)
+        return _default_logger;
+    
+    // if no default logger, map is empty
+    // just build a defaut logger, it will be set
+    // as default_logger in the constructor
+    logger* new_logger = new logger();
+
+    return new_logger;
+}
 
 logger* logger::get_logger(const std::string& name) {
     std::map<std::string, logger*>::iterator it;
@@ -59,32 +82,53 @@ logger* logger::get_logger(const std::string& name) {
     it = _logger_list.find(name);
     if (it != _logger_list.end())
         return it->second;
-    else
-        return nullptr;
+
+    return nullptr;
+}
+
+bool logger::loggername_exist(const std::string& name) {
+     // Check if the same name exist
+    for (auto const& lo : _logger_list)
+    {
+        if(lo.first == name)  // string (key)
+            return true;
+    }
+    return false;
+}
+
+void logger::logger_killall() {
+    // Copy the map because items will be 
+    // deleted by the destructor
+     std::map<std::string, logger*> list_cpy(_logger_list);
+    for (auto const& lo : list_cpy)
+        delete (lo.second);
 }
 
 // constructor
 
 logger::logger(log_policy_interface* policy,
-                const std::string& name):
-    _policy(policy), _log_line_number(0), _filename(name)
+        const std::string& name): _policy(policy),
+        _log_line_number(0), _filename(name)
 {
     //remove the path for the logger name
     _name = _filename.substr(_filename.find_last_of("/\\") + 1);
     
     _min_log_level = log_level::debug;
-    _logger_list.insert(std::pair<std::string, logger*>(name, this));
+
+    if (_logger_list.empty())
+        set_default_logger();
+
+    _logger_list.insert(std::pair<std::string, logger*>(_filename, this));
     set_pattern(DEFAULT_PATTERN);
     _date_format = "%d-%m-%Y";
     _time_format = "%H:%M:%S";
 
     _policy->open_out_stream(_filename);
-    // avoid logging because pattern is not set
-    // LOG_INFO( "-Logger activity started-" ); 
+    // avoid logging start here because pattern is not set
 
     //Set the running flag and spawn the daemon
-    _is_still_running.test_and_set();
-    _daemon = std::move( std::thread{ logging_daemon, this } );
+    _is_running.store(true);
+    _daemon = std::thread( &logger::logging_thread, this );
 }
 
 // destructor
@@ -93,25 +137,33 @@ logger::~logger()
 {
     std::map<std::string, logger*>::iterator it;
 
-    LOG_INFO( "-Terminating logger activity...-" );
     terminate_logger();
-      
-    it = _logger_list.find(_name);
+
+    // if the default_logger is deleted, reaffect to the 1st
+    if (_default_logger == this)
+        if(!_logger_list.empty())
+            _default_logger = _logger_list.begin()->second;
+
+    it = _logger_list.find(_filename);
     if (it != _logger_list.end())
          _logger_list.erase (it);
 
-    
     _policy->close_out_stream();
     delete _policy;
+}
+
+void logger::set_default_logger()
+{
+    _default_logger = this;
 }
 
 void logger::terminate_logger()
 {
     //Terminate the daemon activity
-    _is_still_running.clear();
+    LOG_INFO( "..............Logger activity terminated............." );
+    _is_running.store(false);
     _daemon.join();
 }
-
 
 void logger::set_thread_name(const std::string& name)
 {
@@ -125,8 +177,15 @@ void logger::set_min_log_level(log_level new_level)
 
 void logger::print_impl(std::stringstream&& log_stream)
 {
-    std::lock_guard< std::timed_mutex > lock( _write_mutex );
-    _log_buffer.push_back(log_stream.str());
+    if(!log_stream.str().empty()) {
+        if(log_stream.str().back() != '\n')
+            log_stream << std::endl;
+
+        std::scoped_lock<std::mutex> lock(_write_mutex);
+        std::string todel(log_stream.str());
+        _log_buffer.push(log_stream.str());
+    }
+    _data_available.notify_one();
 }
 
 std::string logger::get_line_number() {
@@ -184,7 +243,7 @@ std::string logger::get_empty_string() {
 
 void logger::set_pattern(const std::string &pattern) {
     std::string userchar;
-    std::pair <std::string, std::string (logger::*)()> format_elmt;
+    headerElement format_elmt;
 
     // Clear previous pattern
     _header_pattern.clear();
@@ -256,5 +315,3 @@ void logger::set_date_format(const std::string &fmt){
 void logger::set_time_format(const std::string &fmt){
     _time_format = fmt;
 }
-
-

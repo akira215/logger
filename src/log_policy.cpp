@@ -5,6 +5,9 @@
 #include <sstream>
 #include <stdio.h>
 
+
+#include <iostream>
+
 namespace fs = std::filesystem;
 
 /**
@@ -42,7 +45,7 @@ void file_log_policy::close_out_stream() {
 }
 
 void file_log_policy::write(const std::string& msg) {
-    _out_stream<<msg<<std::endl<<std::flush;
+    _out_stream << msg << std::flush;
 }
 
 /**
@@ -167,14 +170,18 @@ void ringfile_log_policy::write(const std::string& msg) {
 
     _current_size += msg.length();
 
-    _out_stream<<msg<<std::endl<<std::flush;
+    _out_stream << msg << std::flush;
 }
 
 /**
 * -------------------Implementation for stdout_log_policy---------------------
 */
+
 void stdout_log_policy::write(const std::string& msg) {
-    std::cout<<msg<<std::endl<<std::flush;
+
+    // write directly to the file descriptor to avoid the buffer
+    //::write(STDOUT_FILENO, msg .c_str(), msg .length());
+    std::cerr << msg << std::flush;
 }
 
 /**
@@ -318,7 +325,7 @@ void dailyfile_log_policy::write(const std::string& msg) {
     if(is_rotation_required())
         rotate_file();
 
-    _out_stream<<msg<<std::endl<<std::flush;
+    _out_stream << msg << std::flush;
 }
 
 /**
@@ -351,7 +358,3 @@ void spread_log_policy::write(const std::string& msg) {
 	    (*it)->write(msg);
     }
 }
-
-
-
-
