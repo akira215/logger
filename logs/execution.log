@@ -122,3 +122,33 @@
 #4:[Fri 08-May-20 21:52:12]-[ERROR]-[computer]:He started to hit the computer
 #5:[Fri 08-May-20 21:52:12]-[CRITICAL]-[computer]:I'm about to explode !
 #6:[Fri 08-May-20 21:52:13]-[INFO]-[computer]:..............Logger activity terminated.............
+#1:[Fri 08-May-20 22:11:13]-[INFO]-[computer]:because min log level has been set higher
+#2:[Fri 08-May-20 22:11:13]-[NOTICE]-[computer]:This is due to bad coding guy
+#3:[Fri 08-May-20 22:11:13]-[WARNING]-[computer]:I think he is going crazy
+#4:[Fri 08-May-20 22:11:13]-[ERROR]-[computer]:He started to hit the computer
+#5:[Fri 08-May-20 22:11:13]-[CRITICAL]-[computer]:I'm about to explode !
+#6:[Fri 08-May-20 22:11:13]-[INFO]-[computer]:..............Logger activity terminated.............
+#1:[Fri 08-May-20 22:12:12]-[INFO]-[computer]:because min log level has been set higher
+#2:[Fri 08-May-20 22:12:12]-[NOTICE]-[computer]:This is due to bad coding guy
+#3:[Fri 08-May-20 22:12:12]-[WARNING]-[computer]:I think he is going crazy
+#4:[Fri 08-May-20 22:12:12]-[ERROR]-[computer]:He started to hit the computer
+#5:[Fri 08-May-20 22:12:12]-[CRITICAL]-[computer]:I'm about to explode !
+#6:[Fri 08-May-20 22:12:12]-[INFO]-[computer]:..............Logger activity terminated.............
+#1:[Fri 08-May-20 22:13:34]-[INFO]-[computer]:because min log level has been set higher
+#2:[Fri 08-May-20 22:13:34]-[NOTICE]-[computer]:This is due to bad coding guy
+#3:[Fri 08-May-20 22:13:34]-[WARNING]-[computer]:I think he is going crazy
+#4:[Fri 08-May-20 22:13:34]-[ERROR]-[computer]:He started to hit the computer
+#5:[Fri 08-May-20 22:13:34]-[CRITICAL]-[computer]:I'm about to explode !
+#6:[Fri 08-May-20 22:13:34]-[INFO]-[computer]:..............Logger activity terminated.............
+#1:[Fri 08-May-20 22:15:44]-[INFO]-[computer]:because min log level has been set higher
+#2:[Fri 08-May-20 22:15:44]-[NOTICE]-[computer]:This is due to bad coding guy
+#3:[Fri 08-May-20 22:15:44]-[WARNING]-[computer]:I think he is going crazy
+#4:[Fri 08-May-20 22:15:44]-[ERROR]-[computer]:He started to hit the computer
+#5:[Fri 08-May-20 22:15:44]-[CRITICAL]-[computer]:I'm about to explode !
+#6:[Fri 08-May-20 22:15:44]-[INFO]-[computer]:..............Logger activity terminated.............
+#1:[Fri 08-May-20 22:19:39]-[INFO]-[computer]:because min log level has been set higher
+#2:[Fri 08-May-20 22:19:39]-[NOTICE]-[computer]:This is due to bad coding guy
+#3:[Fri 08-May-20 22:19:39]-[WARNING]-[computer]:I think he is going crazy
+#4:[Fri 08-May-20 22:19:39]-[ERROR]-[computer]:He started to hit the computer
+#5:[Fri 08-May-20 22:19:39]-[CRITICAL]-[computer]:I'm about to explode !
+#6:[Fri 08-May-20 22:19:39]-[INFO]-[computer]:..............Logger activity terminated.............

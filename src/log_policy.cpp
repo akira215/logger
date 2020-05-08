@@ -1,12 +1,10 @@
 #include "log_policy.hpp"
 #include <cassert>
 #include <filesystem>
-#include <iomanip>
+//#include <iomanip>
 #include <sstream>
-#include <stdio.h>
+//#include <stdio.h> //required if ::write(STDOUT_FILENO, ...);
 
-
-#include <iostream>
 
 namespace fs = std::filesystem;
 

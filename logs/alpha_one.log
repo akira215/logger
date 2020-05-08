@@ -98,3 +98,33 @@
 08-05-2020 21:52:12 NOTICE you can add as many output as you want
 08-05-2020 21:52:12 WARNING But take care of the performance
 08-05-2020 21:53:15 INFO ..............Logger activity terminated.............
+08-05-2020 22:11:13 DEBUG Spreading log on 2 outputs
+08-05-2020 22:11:13 INFO 1st one is a file log
+08-05-2020 22:11:13 INFO 2nd one is a stdout log
+08-05-2020 22:11:13 NOTICE you can add as many output as you want
+08-05-2020 22:11:13 WARNING But take care of the performance
+08-05-2020 22:11:13 INFO ..............Logger activity terminated.............
+08-05-2020 22:12:12 DEBUG Spreading log on 2 outputs
+08-05-2020 22:12:12 INFO 1st one is a file log
+08-05-2020 22:12:12 INFO 2nd one is a stdout log
+08-05-2020 22:12:12 NOTICE you can add as many output as you want
+08-05-2020 22:12:12 WARNING But take care of the performance
+08-05-2020 22:12:12 INFO ..............Logger activity terminated.............
+08-05-2020 22:13:34 DEBUG Spreading log on 2 outputs
+08-05-2020 22:13:34 INFO 1st one is a file log
+08-05-2020 22:13:34 INFO 2nd one is a stdout log
+08-05-2020 22:13:34 NOTICE you can add as many output as you want
+08-05-2020 22:13:34 WARNING But take care of the performance
+08-05-2020 22:13:34 INFO ..............Logger activity terminated.............
+08-05-2020 22:15:44 DEBUG Spreading log on 2 outputs
+08-05-2020 22:15:44 INFO 1st one is a file log
+08-05-2020 22:15:44 INFO 2nd one is a stdout log
+08-05-2020 22:15:44 NOTICE you can add as many output as you want
+08-05-2020 22:15:44 WARNING But take care of the performance
+08-05-2020 22:15:44 INFO ..............Logger activity terminated.............
+08-05-2020 22:19:39 DEBUG Spreading log on 2 outputs
+08-05-2020 22:19:39 INFO 1st one is a file log
+08-05-2020 22:19:39 INFO 2nd one is a stdout log
+08-05-2020 22:19:39 NOTICE you can add as many output as you want
+08-05-2020 22:19:39 WARNING But take care of the performance
+08-05-2020 22:19:39 INFO ..............Logger activity terminated.............

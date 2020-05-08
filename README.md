@@ -75,6 +75,9 @@ logger(log_policy_interface* policy =
 * `name` : the logger name. It will be used to retrieve the logger from anywhere using the static method. In addition, it will be the filename in case of file logging policy.
 * `path` : path of the logging file in case of file policy, unused otherwise.
 
+If you construct a logger with a `name` that already exist in the logger list,
+it will replace the existing one. A static function is available to check whether a logger is already registred with a name: `bool loggername_exist(const std::string& name)`, it return true only if a logger with `name` is already registered.
+
 ### Destruction
 By calling the destructor (using `delete` on a variable created on the heap, or getting out of scope for a stack variable), the corresponding logger will be deleted (its thread stopped and purged) and its entry will be removed from the logger list, so it will not be accessible again.
 

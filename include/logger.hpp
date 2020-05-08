@@ -15,26 +15,18 @@
  * GNU General Public License for more details.
  */
 
-//#include <memory>
-#include <string>
-//#include <iostream>
-#include <sstream>
-//#include <fstream>
-//#include <stdexcept>
-//#include <ctime>
 
-#include <mutex>
-#include <chrono>
-#include <thread>
+#include <string>
+#include <sstream>
 #include <map>
 #include <queue>
-#include <atomic>
-//#include <cassert>
 #include <vector>
-#include <queue>
-#include <string>
-#include <utility>
+
+#include <mutex>
+#include <atomic>
+#include <thread>
 #include <condition_variable>
+#include <utility>
 
 #include "log_policy.hpp"
 

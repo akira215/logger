@@ -14,18 +14,9 @@
  * GNU General Public License for more details.
  */
 
-
-
-extern "C" {
-#include <unistd.h>
-#include <fcntl.h>
-#include <pthread.h>
-#include <poll.h>
-}
-
 #include "logger.hpp"
 #include <iomanip>
-#include <ctime>
+#include <chrono>
 
 /*
 * Thread functions
