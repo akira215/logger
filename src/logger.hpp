@@ -15,7 +15,6 @@
  * GNU General Public License for more details.
  */
 
-
 #include <string>
 #include <sstream>
 #include <map>
@@ -29,8 +28,6 @@
 #include <utility>
 
 #include "log_policy.hpp"
-
-
 
 /**
  * @brief log level definition

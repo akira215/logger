@@ -151,7 +151,7 @@ void logger::set_default_logger()
 void logger::terminate_logger()
 {
     //Terminate the daemon activity
-    LOG_INFO( "..............Logger activity terminated............." );
+    LOG_INFO( "..............Logger activity terminated.............." );
     _is_running.store(false);
     _daemon.join();
 }
