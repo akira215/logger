@@ -418,7 +418,8 @@ class log_stream: public std::ostream
             void logOutput() {
                 // Called by destructor.
                 // destructor can not call virtual methods.
-                logger::get_default_logger()->print(_loglevel,str());
+                if(logger::logger::get_default_logger())
+                    logger::get_default_logger()->print(_loglevel,str());
                 str("");
             }
         private:

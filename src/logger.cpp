@@ -132,8 +132,10 @@ logger::~logger()
 
     // if the default_logger is deleted, reaffect to the 1st
     if (_default_logger == this)
-        if(!_logger_list.empty())
+        if(_logger_list.size() > 1)
             _default_logger = _logger_list.begin()->second;
+        else
+            _default_logger = nullptr;
 
     it = _logger_list.find(_filename);
     if (it != _logger_list.end())
